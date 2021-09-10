@@ -9,7 +9,7 @@ import (
 )
 
 type Content struct {
-	Price    string
+	Price    float64
 	Currency string
 }
 
@@ -20,15 +20,19 @@ type Response struct {
 }
 
 type ApiResponse struct {
-	Lprice string `json:"lprice"`
-	Curr1  string `json:"curr1"`
-	Curr2  string `json:"curr2"`
+	Id         string        `json:"id"`
+	MarketData *CurrentPrice `json:"market_data,omitempty"`
+}
+
+type CurrentPrice struct {
+	CurrentPrice map[string]float64 `json:"current_price"`
 }
 
 func main() {
 	r := gin.Default()
 	r.GET("/myapi", func(c *gin.Context) {
-		resp:= getResponseApiExternal()
+		data := c.Query("data")
+		resp:= getResponseApiExternal(data)
 		c.JSON(200, gin.H{
 			"Id": resp.Id,
 			"Content": resp.Content,
@@ -38,30 +42,33 @@ func main() {
 	r.Run(":8081")
 }
 
-func getResponseApiExternal() Response {
+func getResponseApiExternal(coin string) Response {
+	url := "https://api.coingecko.com/api/v3/coins/" + coin
+	resp, err := http.Get(url)
 
-	resp, err := http.Get("https://cex.io/api/last_price/BTC/USD")
 	if err != nil {
 	log.Fatalln(err)
 	}
+
 	body, err2 := ioutil.ReadAll(resp.Body)
 	if err2 != nil {
 	log.Fatalln(err)
 	}
 
 	var apiResponse ApiResponse
-	err3 := json.Unmarshal(body, &apiResponse)
+	err3 := json.Unmarshal(body.Body, &apiResponse)
 	if err3 != nil {
 	log.Fatalln(err)
 	}
 
 	respInStruct := Response{
-		Id: apiResponse.Curr1,
+		Id: apiResponse.Id,
 		Content: Content{
-			Price: apiResponse.Lprice,
-			Currency: apiResponse.Curr2,
+			Price: apiResponse.MarketData.CurrentPrice["usd"],
+			Currency: "USD",
 		},
 		Partial: false,
 	}
+
 	return respInStruct
 }
