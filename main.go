@@ -33,11 +33,19 @@ func main() {
 	r.GET("/myapi", func(c *gin.Context) {
 		data := c.Query("data")
 		resp:= getResponseApiExternal(data)
-		c.JSON(200, gin.H{
-			"Id": resp.Id,
-			"Content": resp.Content,
-			"Partial": resp.Partial,
-		})
+
+		if resp.Content.Price != 0 {
+			c.JSON(200, gin.H{
+				"Id": resp.Id,
+				"Content": resp.Content,
+				"Partial": resp.Partial,
+			})
+		} else {
+			c.JSON(206, gin.H{
+				"Id": data,
+				"Partial": true,
+			})
+		}
 	})
 	r.Run(":8081")
 }
@@ -47,18 +55,21 @@ func getResponseApiExternal(coin string) Response {
 	resp, err := http.Get(url)
 
 	if err != nil {
-	log.Fatalln(err)
+		log.Fatalln(err)
 	}
 
 	body, err2 := ioutil.ReadAll(resp.Body)
 	if err2 != nil {
-	log.Fatalln(err)
+		log.Fatalln(err)
 	}
 
-	var apiResponse ApiResponse
-	err3 := json.Unmarshal(body.Body, &apiResponse)
+	var apiResponse = ApiResponse{
+		Id:         "",
+		MarketData: &CurrentPrice{},
+	}
+	err3 := json.Unmarshal(body, &apiResponse)
 	if err3 != nil {
-	log.Fatalln(err)
+		log.Fatalln(err)
 	}
 
 	respInStruct := Response{
